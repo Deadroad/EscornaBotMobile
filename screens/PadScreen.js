@@ -1,48 +1,52 @@
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  Platform
+  Platform,
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { Button, Icon } from 'react-native-elements';
+import { createIconSetFromFontello } from 'react-native-vector-icons';
+import fontelloConfig from './config.json';
 
 // Extra libs
 import { stringToBytes } from 'convert-string';
 
-const hexButtons = {
-  'n': '6e',
-  's': '73',
-  'w': '77',
-  'e': '65',
-  'g': '67',
-  'nl': '0a'
-};
+const mapStateToProps = (state, action) => ({
+  connectedDevice: state.connectedDevice || null,
+  peripherals: state.peripherals || new Map(),
+  loading: state.loading || false,
+});
+
+const EscornabotIcon = createIconSetFromFontello(fontelloConfig);
 
 class PadScreen extends Component {
 
+  static defaultProps = {
+    connectedDevice: null,
+  }
+
   constructor(props) {
-    super();
+    super(props);
     this.props = props;
-    this.manager = null;
+    this.manager = this.props.BleManager;
     this.state = {
-      connectedDevice: null,
+      connectedDevice: this.props.connectedDevice,
       service: null,
-      characteristic: null
+      characteristic: null,
+      connectingLast: this.props.loading
     }
-  }
-
-  componentWillReceiveProps(props) {
-    this.props = props;
-    this.manager = this.props.manager;
-    this.setState({connectedDevice: this.props.connectedDevice});
     if (this.props.connectedDevice!=null){
-      this.connectedDevice(this.props.connectedDevice, this.props.manager);
+      this.connectDevice(this.props.connectedDevice, this.manager);
     }
   }
 
-  connectedDevice(device, manager) {
+  connectDevice(device, manager) {
     const self = this;
     this.manager.retrieveServices(device.id).then((peripheralInfo) => {
       peripheralInfo.characteristics.map((characteristic, index) => {
@@ -72,7 +76,6 @@ class PadScreen extends Component {
 
   onPressButtons(button) {
     const self = this;
-    // let valueToSend = base64.encode(button+'\n');
     let valueToSend = stringToBytes(button+'\n');
     this.manager.startNotification(this.state.connectedDevice.id, this.state.service, this.state.characteristic).then(() => {
       console.log('Started notification on ' + this.state.connectedDevice.id);
@@ -83,33 +86,44 @@ class PadScreen extends Component {
   }
 
   render() {
-    const { connectedDevice } = this.state;
+    const { connectedDevice, connectingLast } = this.state;
     return (
       <View style={styles.container}>
         <View style={{position: 'absolute', top: 20}}><Text>Now connected: <Text style={{fontWeight: 'bold'}}>{connectedDevice ? connectedDevice.name : 'No device connected'}</Text></Text></View>
         {connectedDevice && 
         <View style={styles.container}>
           <View>
-            <TouchableOpacity style={styles.buttons} onPress={() => this.onPressButtons('n')}>
-              <Icon name="keyboard-arrow-up" size={28} />
+            <TouchableOpacity style={[styles.buttons, styles.n]} onPress={() => this.onPressButtons('n')}>
+              {/* <Icon name="keyboard-arrow-up" size={28} /> */}
+              <EscornabotIcon name="n" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
           </View>
           <View style={styles.row}>
-            <TouchableOpacity style={styles.buttons} onPress={() => this.onPressButtons('w')}>
-              <Icon name="keyboard-arrow-left" size={28} />
+            <TouchableOpacity style={[styles.buttons, styles.w]} onPress={() => this.onPressButtons('w')}>
+              {/* <Icon name="keyboard-arrow-left" size={28} /> */}
+              <EscornabotIcon name="w" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.okButton} onPress={() => this.onPressButtons('g')}>
-              <Text style={{color:'#FFF', fontWeight: 'bold', fontSize: 24}}>GO</Text>
+            <TouchableOpacity style={[styles.buttons, styles.g]} onPress={() => this.onPressButtons('g')}>
+              {/* <Text style={{color:'#FFF', fontWeight: 'bold', fontSize: 24}}>GO</Text> */}
+              <EscornabotIcon name="g" size={60} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.buttons} onPress={() => this.onPressButtons('e')}>
-              <Icon name="keyboard-arrow-right" size={28} />
+            <TouchableOpacity style={[styles.buttons, styles.e]} onPress={() => this.onPressButtons('e')}>
+              {/* <Icon name="keyboard-arrow-right" size={28} /> */}
+              <EscornabotIcon name="e" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
           </View>
           <View>
-            <TouchableOpacity style={styles.buttons} onPress={() => this.onPressButtons('s')}>
-              <Icon name="keyboard-arrow-down" size={28} />
+            <TouchableOpacity style={[styles.buttons, styles.s]} onPress={() => this.onPressButtons('s')}>
+              {/* <Icon name="keyboard-arrow-down" size={28} /> */}
+              <EscornabotIcon name="s" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
           </View>
+        </View>
+        }
+        {connectingLast &&
+        <View style={[styles.container]}>
+          <ActivityIndicator size="small" color="#333" />
+          <Text style={{marginTop:10}}>Connecting last known peripheral...</Text>
         </View>
         }
       </View>
@@ -133,22 +147,31 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 5,
     marginRight: 5,
-    marginLeft: 5
-  },
-  okButton: {
-    width: 70,
-    height: 70,
-    backgroundColor: '#25d225',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 5,
-    marginBottom: 5,
-    marginRight: 5,
     marginLeft: 5,
+    borderRadius: 50,
+    borderWidth: 1
+  },
+  g: {
+    backgroundColor: 'white',
+  },
+  n: {
+    backgroundColor: 'blue',
+  },
+  s: {
+    backgroundColor: 'black',
+  },
+  w: {
+    backgroundColor: 'red',
+  },
+  e: {
+    backgroundColor: 'green',
+  },
+  escornaboticon: {
+    color: '#FFF'
   },
   row: {
     flexDirection: 'row'
   }
 });
 
-export default PadScreen;
+export default connect(mapStateToProps)(PadScreen);
