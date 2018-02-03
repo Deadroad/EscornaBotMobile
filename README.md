@@ -6,8 +6,9 @@ Mobile app made with React Native to control EscornaBot with HM-10 BLE module, i
 
 
 
-### **Install**
-Just clone repository and execute `npm install`
+### **[Install](INSTALLATION.MD)**
 
 Check this site to know about the project:
 [http://escornabot.com/web/](http://escornabot.com/web/)
+
+Thanks to [Miguel](https://github.com/mgesteiro) for provide me FTDI and HM-10 BLE chip to make this app possible.
