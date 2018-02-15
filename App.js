@@ -14,7 +14,8 @@ import {
     ActivityIndicator,
     AppState,
     AppRegistry,
-    AsyncStorage
+    AsyncStorage,
+    Alert
 } from 'react-native';
 import { Button, Icon } from 'react-native-elements';
 import { Actions, Router, Scene } from 'react-native-router-flux';
@@ -31,10 +32,12 @@ const window = Dimensions.get('window');
 const BleManagerModule = NativeModules.BleManager;
 const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
 
+const seconds = 9999;
+
 const TabIcon = ({ selected, title }) => {
     let icon = null;
     switch (title) {
-      case 'Pad':
+      case 'Keypad':
         icon = <Icon name="all-out" size={28} />;
         break;
       case 'Devices':
@@ -70,11 +73,14 @@ class AppRoot extends Component {
         connectedDevice: null,
         service: null,
         characteristic: null,
-        peripherals: new Map(),
+        peripherals: this.props.peripherals,
         state: false,
         scanning: false,
         appState: '',
-        loading: false
+        loading: false,
+        enabledAlert : false,
+        enabledBluetooth: true,
+        from: '',
       }
 
       this.handleDiscoverPeripheral = this.handleDiscoverPeripheral.bind(this);
@@ -84,9 +90,12 @@ class AppRoot extends Component {
       this.handlerConnectPeripheral = this.handlerConnectPeripheral.bind(this);
       this.handleAppStateChange = this.handleAppStateChange.bind(this);
       this.connectToDevice = this.connectToDevice.bind(this);
+      this.bleUpdateStateBt = this.bleUpdateStateBt.bind(this);
+      this.startScan = this.startScan.bind(this);
+      this.stopScan = this.stopScan.bind(this);
     }
 
-    async componentWillMount() {
+    componentWillMount() {
       AppState.addEventListener('change', this.handleAppStateChange);
   
       this.BleManager.start({showAlert: false});
@@ -96,6 +105,7 @@ class AppRoot extends Component {
       this.handlerDisconnect = this.bleManagerEmitter.addListener('BleManagerDisconnectPeripheral', this.handleDisconnectedPeripheral );
       this.handlerConnect = this.bleManagerEmitter.addListener('BleManagerConnectPeripheral', this.handlerConnectPeripheral );
       this.handlerUpdate = this.bleManagerEmitter.addListener('BleManagerDidUpdateValueForCharacteristic', this.handleUpdateValueForCharacteristic );
+      this.bleUpdateState = this.bleManagerEmitter.addListener('BleManagerDidUpdateState', this.bleUpdateStateBt );
   
       if (Platform.OS === 'android' && Platform.Version >= 23) {
           PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION).then((result) => {
@@ -112,59 +122,80 @@ class AppRoot extends Component {
               }
         });
       }
-      
-    }
-
-    componentDidMount() {
-      this._checkStoraggedPeripherals();
     }
 
     componentDidUpdate() {
-      console.log(this.state.peripherals.size, this.state.scanning, this.props.connectedDevice)
-      if (this.state.peripherals.size > 0 && this.state.scanning == false && this.state.connectedDevice == null) {
-        this._checkStoraggedPeripherals('connect');
+      const { enabledBluetooth, scanning } = this.state;
+
+      if (enabledBluetooth) {
+        switch (Actions.currentScene) {
+          case '_pad':
+            if (scanning) this.stopScan();
+            break;
+          case '_devices':
+            if (!scanning) this.startScan();
+            break;
+        }
       }
     }
 
-    async _checkStoraggedPeripherals(type = 'check') {
+    _checkStoragedPeripherals(peripheral) {
       const self = this;
       /* Get local storage to get last known peripheral and connect automatically with it */
       try {
-        const peripheralsJson = await AsyncStorage.getItem('EsconaBot/lastConnected');
-        if (peripheralsJson !== null) {
-          switch (type) {
-            case 'check':
-              self.props.setLoading(true);
-              self.startScan();
-              break;
-            case 'connect':
-              const peripheralsValues = JSON.parse(peripheralsJson);
-              let statePeripherals = this.state.peripherals;
-              statePeripherals.forEach(function(elState, indexState){
-                if (String(peripheralsValues.id) === String(elState.id)) {
-                  let peripheralToConnect = elState;
-                  peripheralToConnect.connect = true;
-                  self.state.connectedDevice = elState;
-                  self.connectToDevice(elState);
-                  return false;
-                }
-              });
-              break;
+        AsyncStorage.getItem('EsconaBot/lastConnected')
+        .then((value) => {
+          let peripheralsJson = value;
+          console.log('AsyncStorage', peripheralsJson);
+          if (peripheralsJson !== null && peripheral) {
+            const peripheralsValues = JSON.parse(peripheralsJson);
+            if (String(peripheralsValues.id) === String(peripheral.id)) {
+              peripheralsValues.connected = true;
+              self.connectToDevice(peripheral);
+            }
           }
-        }
+        }).done();
       } catch (error) {
         console.log(error)
       }
     }
   
     handleAppStateChange(nextAppState) {
+      const self = this;
       if (this.state.appState.match(/inactive|background/) && nextAppState === 'active') {
         console.log('App has come to the foreground!')
         this.BleManager.getConnectedPeripherals([]).then((peripheralsArray) => {
           console.log('Connected peripherals: ' + peripheralsArray.length);
+          if (peripheralsArray.length === 0) {
+            this.BleManager.checkState();
+          }
         });
       }
       this.setState({appState: nextAppState});
+    }
+
+    bleUpdateStateBt(state) {
+      const self = this;
+      console.log('bleUpdateStateBt', state)
+      if ((state.state === 'off' || state.state === 'turning_off') && !this.state.enabledAlert) {
+        if (Actions.currentScene === '_devices') this.stopScan();
+        this.setState({enabledBluetooth: false});
+        this.props.setDevice(null);
+        this.props.setPeripherals(new Map());
+        this.setState({enabledAlert : true});
+        Alert.alert(
+          'Information',
+          'Please, enable Bluetooth!',
+          [
+            {text: 'OK', onPress: () => self.setState({enabledAlert: false})},
+          ],
+          { cancelable: false }
+        );
+      }
+      if (state.state === 'on' || state.state === 'turning_on') {
+        this.setState({enabledBluetooth: true});
+        if (Actions.currentScene === '_pad') Actions.devices();
+      }
     }
   
     componentWillUnmount() {
@@ -172,21 +203,31 @@ class AppRoot extends Component {
       if (this.handlerStop) this.handlerStop.remove();
       if (this.handlerDisconnect) this.handlerDisconnect.remove();
       if (this.handlerUpdate) this.handlerUpdate.remove();
+      this.setState({from: '', connectedDevice: null});
     }
   
-    handleDisconnectedPeripheral(data) {
+    /* Android: al desconectar parece que no refresca el state.connectedDevice o elimina el item de AsyncStorage */
+    async handleDisconnectedPeripheral(data) {
       let peripherals = this.state.peripherals;
       let peripheral = peripherals.get(data.peripheral);
       if (peripheral) {
+        this.props.setDevice(null);
+        if (this.state.from === 'devicesScreen') await AsyncStorage.removeItem('EsconaBot/lastConnected');
         peripheral.connected = false;
         peripherals.set(peripheral.id, peripheral);
-        this.setState({peripherals});
-        this.props.setDevice(null);
+        this.setState({peripherals, from: '', connectedDevice: null});
+        if (Actions.currentScene === '_pad') Actions.devices();
+        if (Actions.currentScene === '_devices') this.startScan();
       }
       console.log('Disconnected from ' + data.peripheral);
     }
   
-    handlerConnectPeripheral(peripheralId) {
+    handlerConnectPeripheral(peripheral) {
+      const self = this;
+      if (peripheral){
+        self.setState({ from: '' });
+        Actions.pad();
+      }
     }
   
     handleUpdateValueForCharacteristic(data) {
@@ -197,70 +238,86 @@ class AppRoot extends Component {
       console.log('Scan is stopped');
       this.setState({ scanning: false });
     }
+
+    stopScan() {
+      if (this.state.scanning) {
+        this.BleManager.stopScan().then(() => {
+          console.log('Scan is manually stopped');
+          this.setState({scanning: false});
+        });
+      }
+    }
   
     startScan() {
       if (!this.state.scanning) {
-        this.setState({peripherals: new Map()});
-        this.BleManager.scan([], 3, true).then((results) => {
+        this.setState({peripherals: new Map(), scanning: true});
+        this.BleManager.scan([], seconds, true).then(() => {
           console.log('Scanning...');
           this.setState({scanning: true});
         });
       }
     }
   
-    retrieveConnected(){
-      this.BleManager.getConnectedPeripherals([]).then((results) => {
-        console.log(results);
-        var peripherals = this.state.peripherals;
-        for (var i = 0; i < results.length; i++) {
-          var peripheral = results[i];
-          peripheral.connected = true;
-          peripherals.set(peripheral.id, peripheral);
-          this.setState({ peripherals });
-        }
-      });
-    }
-  
     handleDiscoverPeripheral(peripheral){
       var peripherals = this.state.peripherals;
       if (!peripherals.has(peripheral.id)){
-        console.log('Got ble peripheral', peripheral);
+        console.log('Got BLE peripheral', peripheral, this.state);
+        let connectedDevice = this.state.connectedDevice;
+        if (connectedDevice) {
+          connectedDevice.connected = true;
+          peripherals.set(connectedDevice.id, connectedDevice);
+        }
         peripherals.set(peripheral.id, peripheral);
         this.setState({ peripherals })
         this.props.setPeripherals(peripherals);
+        if (this.state.from !== 'devicesScreen') this._checkStoragedPeripherals(peripheral);
       }
     }
   
-    connectToDevice(peripheral) {
+    connectToDevice(peripheral, from = 'empty') {
       const self = this;
+      this.setState({from});
       if (peripheral){
         if (peripheral.connected){
           this.BleManager.disconnect(peripheral.id);
         } else {
-          this.BleManager.connect(peripheral.id).then(() => {
-            let peripherals = this.state.peripherals;
-            let connectedDevice = this.props.connectedDevice;
-            let p = peripherals.get(peripheral.id);
-            if (p) {
-              p.connected = true;
-              peripherals.set(peripheral.id, p);
-              connectedDevice = peripheral;
-              this.setState({peripherals, connectedDevice});
-              this.props.setDevice(peripheral);
-              this._setAsyncStorage(connectedDevice);
-              this.props.setLoading(false);
-            }
-            console.log('Connected to ' + peripheral.id);
-          }).catch((error) => {
-            console.log('Connection error', error);
-          });
+          /* If there is another previous connected device, first disconnect */
+          if (this.state.connectedDevice !== null) {
+            this.BleManager.disconnect(this.state.connectedDevice.id)
+            .then(() => {
+              self.successfulConnect(peripheral, from);
+            });
+          } else {
+            this.successfulConnect(peripheral, from);
+          }
         }
       }
     }
+
+    successfulConnect(peripheral, from = 'empty') {
+      this.BleManager.connect(peripheral.id).then(() => {
+        let peripherals = this.state.peripherals;
+        let connectedDevice = this.state.connectedDevice;
+        let p = peripherals.get(peripheral.id);
+        if (p) {
+          p.connected = true;
+          console.log('successfulConnect', p)
+          peripherals.set(peripheral.id, p);
+          connectedDevice = peripheral;
+          this.setState({peripherals, connectedDevice});
+          this.props.setDevice(peripheral);
+          this._setAsyncStorage(connectedDevice);
+          this.props.setLoading(false);
+        }
+        console.log('Connected to ' + peripheral.id);
+      }).catch((error) => {
+        console.log('Connection error', error);
+      });
+    }
   
-    async _setAsyncStorage(lastConnected) {
+    _setAsyncStorage(lastConnected) {
       try {
-        await AsyncStorage.setItem('EsconaBot/lastConnected', JSON.stringify(lastConnected));
+        AsyncStorage.setItem('EsconaBot/lastConnected', JSON.stringify(lastConnected));
       } catch (error) {
         console.log(error)
       }
@@ -286,12 +343,13 @@ class AppRoot extends Component {
             BleManager={this.BleManager}
             bleManagerEmitter={this.bleManagerEmitter}
             connectToDevice={this.connectToDevice}
+            enabledBluetooth={this.state.enabledBluetooth}
             {...this.state}
             >
             <Scene
               key="tabbar"
               tabs
-              tabBarStyle={{ backgroundColor: '#FFFFFF' }}
+              tabBarStyle={{ backgroundColor: '#FFFFFF', height: 54 }}
               activeBackgroundColor="#fffc9e"
               inactiveBackgroundColor="transparent"
               activeTintColor="#fff"
@@ -304,16 +362,16 @@ class AppRoot extends Component {
               <Scene
                 key="pad"
                 component={PadScreen}
-                title="Pad"
+                title="Keypad"
                 icon={TabIcon}
-                initial
               />
               <Scene
+                initial
                 key="devices"
                 component={DevicesScreen}
                 title="Devices"
                 icon={TabIcon}
-                right={() => this._renderRightButton()}
+                // right={() => this._renderRightButton()}
               />
             </Scene>
           </Scene>

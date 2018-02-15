@@ -39,7 +39,9 @@ class PadScreen extends Component {
       connectedDevice: this.props.connectedDevice,
       service: null,
       characteristic: null,
-      connectingLast: this.props.loading
+      connectingLast: this.props.loading,
+      type: '',
+      enabledBluetooth: this.props.enabledBluetooth
     }
     if (this.props.connectedDevice!=null){
       this.connectDevice(this.props.connectedDevice, this.manager);
@@ -51,20 +53,38 @@ class PadScreen extends Component {
     this.manager.retrieveServices(device.id).then((peripheralInfo) => {
       peripheralInfo.characteristics.map((characteristic, index) => {
         if (Platform.OS === 'ios') {
-          if (characteristic.properties.indexOf('WriteWithoutResponse')!=-1 ||
-              characteristic.properties.indexOf('Notify')!=-1) {
+          if (characteristic.properties.includes('WriteWithoutResponse') && 
+            !characteristic.properties.includes('Write') && 
+            !characteristic.properties.includes('Read') && characteristic.properties.length == 1){
             this.setState({
               service: characteristic.service,
               characteristic: characteristic.characteristic,
+              type: 'WriteWithoutResponse'
+            });
+          }
+          if (characteristic.properties.includes('Write')){
+            this.setState({
+              service: characteristic.service,
+              characteristic: characteristic.characteristic,
+              type: 'Write'
             });
           }
         }
         if (Platform.OS === 'android') {
           for (let i in characteristic.properties) {
-            if (characteristic.properties[i] === 'WriteWithoutResponse' || characteristic.properties[i] === 'Notify') {
+            if (characteristic.properties[i] === 'WriteWithoutResponse' && characteristic.properties.length == 1) {
               this.setState({
                 service: characteristic.service,
                 characteristic: characteristic.characteristic,
+                type: 'WriteWithoutResponse'
+              });
+              break;
+            }
+            if (characteristic.properties[i] === 'Write') {
+              this.setState({
+                service: characteristic.service,
+                characteristic: characteristic.characteristic,
+                type: 'Write'
               });
               break;
             }
@@ -77,19 +97,29 @@ class PadScreen extends Component {
   onPressButtons(button) {
     const self = this;
     let valueToSend = stringToBytes(button+'\n');
-    this.manager.startNotification(this.state.connectedDevice.id, this.state.service, this.state.characteristic).then(() => {
-      console.log('Started notification on ' + this.state.connectedDevice.id);
-      this.manager.write(this.state.connectedDevice.id, this.state.service, this.state.characteristic, valueToSend).then(() => {
-        console.log('Value '+valueToSend+' sended!');
-      });
-    });
+    console.log('Started notification on ' + this.state.connectedDevice.id);
+    if (this.state.service!==null && this.state.characteristic!==null){
+      if (this.state.type == 'Write') {
+        this.manager.write(this.state.connectedDevice.id, this.state.service, this.state.characteristic, valueToSend).then(() => {
+          console.log('Value '+valueToSend+' sent!');
+        }).catch((error) => {
+          console.log(error);
+        });
+      } else {
+        this.manager.writeWithoutResponse(this.state.connectedDevice.id, this.state.service, this.state.characteristic, valueToSend).then(() => {
+          console.log('Value '+valueToSend+' sent!');
+        }).catch((error) => {
+          console.log(error);
+        });
+      }
+    }
   }
 
   render() {
-    const { connectedDevice, connectingLast } = this.state;
+    const { connectedDevice, connectingLast, enabledBluetooth } = this.state;
     return (
       <View style={styles.container}>
-        <View style={{position: 'absolute', top: 20}}><Text>Now connected: <Text style={{fontWeight: 'bold'}}>{connectedDevice ? connectedDevice.name : 'No device connected'}</Text></Text></View>
+        <View style={{position: 'absolute', top: 20}}><Text><Text style={{fontWeight: 'bold'}}>{connectedDevice ? connectedDevice.name : 'No device connected'}</Text> {connectedDevice ? 'connected' : null}</Text></View>
         {connectedDevice && 
         <View style={styles.container}>
           <View>
@@ -120,7 +150,7 @@ class PadScreen extends Component {
           </View>
         </View>
         }
-        {connectingLast &&
+        {(connectingLast && enabledBluetooth) &&
         <View style={[styles.container]}>
           <ActivityIndicator size="small" color="#333" />
           <Text style={{marginTop:10}}>Connecting last known peripheral...</Text>

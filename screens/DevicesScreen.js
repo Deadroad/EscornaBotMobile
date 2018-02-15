@@ -43,7 +43,7 @@ class DevicesScreen extends Component {
 
   _renderItem = ({item}) => {
     const icon = item.connected ? <Icon name='done' size={20} color='#04d804' /> : <Icon name='keyboard-arrow-right' size={20} />;
-    return (item.name && <TouchableOpacity onPress={() => this.props.connectToDevice(item)}>
+    return (item.name && <TouchableOpacity onPress={() => this.props.connectToDevice(item, 'devicesScreen')}>
     <ListItem
       title={`${item.name}`}
       subtitle={`${item.id}`}
@@ -55,7 +55,7 @@ class DevicesScreen extends Component {
   }
 
   render() {
-    const list = Array.from(this.props.peripherals.values());
+    const list = Array.from(this.state.peripherals.values());
 
     let returnView = <View style={styles.container}>
       {(list && list.length) ? ( 
@@ -68,7 +68,7 @@ class DevicesScreen extends Component {
         </List>
       ) : (
         // <ActivityIndicator size="small" color="#333" />
-        <Text>Push top right button to scan peripherals</Text>
+        null
       )
       }
     </View>;
