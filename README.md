@@ -7,7 +7,7 @@ With this app you can control an Escornabot bot remotely using a small Bluetooth
 
 
 
-### **[Install](./INSTALLATION.MD)**
+### **[Install](./INSTALLATION.md)**
 
 Check this site to know about the project:
 [http://escornabot.com/web/](http://escornabot.com/web/)
