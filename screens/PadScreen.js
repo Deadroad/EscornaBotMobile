@@ -52,43 +52,25 @@ class PadScreen extends Component {
     const self = this;
     this.manager.retrieveServices(device.id).then((peripheralInfo) => {
       peripheralInfo.characteristics.map((characteristic, index) => {
-        if (Platform.OS === 'ios') {
-          if (characteristic.properties.includes('WriteWithoutResponse') && 
-            !characteristic.properties.includes('Write') && 
-            !characteristic.properties.includes('Read') && characteristic.properties.length == 1){
-            this.setState({
-              service: characteristic.service,
-              characteristic: characteristic.characteristic,
-              type: 'WriteWithoutResponse'
-            });
-          }
-          if (characteristic.properties.includes('Write')){
-            this.setState({
-              service: characteristic.service,
-              characteristic: characteristic.characteristic,
-              type: 'Write'
-            });
-          }
+        let propertiesArray = new Array();
+        for (let i in characteristic.properties) {
+          propertiesArray.push(characteristic.properties[i]);
         }
-        if (Platform.OS === 'android') {
-          for (let i in characteristic.properties) {
-            if (characteristic.properties[i] === 'WriteWithoutResponse' && characteristic.properties.length == 1) {
-              this.setState({
-                service: characteristic.service,
-                characteristic: characteristic.characteristic,
-                type: 'WriteWithoutResponse'
-              });
-              break;
-            }
-            if (characteristic.properties[i] === 'Write') {
-              this.setState({
-                service: characteristic.service,
-                characteristic: characteristic.characteristic,
-                type: 'Write'
-              });
-              break;
-            }
-          }
+        if (propertiesArray.includes('WriteWithoutResponse') && 
+          !propertiesArray.includes('Write') && 
+          !propertiesArray.includes('Read') && propertiesArray.length == 1){
+          this.setState({
+            service: characteristic.service,
+            characteristic: characteristic.characteristic,
+            type: 'WriteWithoutResponse'
+          });
+        }
+        if (propertiesArray.includes('Write')){
+          this.setState({
+            service: characteristic.service,
+            characteristic: characteristic.characteristic,
+            type: 'Write'
+          });
         }
       });
     });
@@ -123,27 +105,27 @@ class PadScreen extends Component {
         {connectedDevice && 
         <View style={styles.container}>
           <View>
-            <TouchableOpacity style={[styles.buttons, styles.n]} onPress={() => this.onPressButtons('n')}>
+            <TouchableOpacity style={[styles.buttons, styles.n]} onPress={() => this.onPressButtons('n')} onLongPress={() => this.onPressButtons('nn')}>
               {/* <Icon name="keyboard-arrow-up" size={28} /> */}
               <EscornabotIcon name="n" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
           </View>
           <View style={styles.row}>
-            <TouchableOpacity style={[styles.buttons, styles.w]} onPress={() => this.onPressButtons('w')}>
+            <TouchableOpacity style={[styles.buttons, styles.w]} onPress={() => this.onPressButtons('w')} onLongPress={() => this.onPressButtons('ww')}>
               {/* <Icon name="keyboard-arrow-left" size={28} /> */}
               <EscornabotIcon name="w" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.buttons, styles.g]} onPress={() => this.onPressButtons('g')}>
+            <TouchableOpacity style={[styles.buttons, styles.g]} onPress={() => this.onPressButtons('g')} onLongPress={() => this.onPressButtons('gg')}>
               {/* <Text style={{color:'#FFF', fontWeight: 'bold', fontSize: 24}}>GO</Text> */}
               <EscornabotIcon name="g" size={60} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.buttons, styles.e]} onPress={() => this.onPressButtons('e')}>
+            <TouchableOpacity style={[styles.buttons, styles.e]} onPress={() => this.onPressButtons('e')} onLongPress={() => this.onPressButtons('ee')}>
               {/* <Icon name="keyboard-arrow-right" size={28} /> */}
               <EscornabotIcon name="e" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
           </View>
           <View>
-            <TouchableOpacity style={[styles.buttons, styles.s]} onPress={() => this.onPressButtons('s')}>
+            <TouchableOpacity style={[styles.buttons, styles.s]} onPress={() => this.onPressButtons('s')} onLongPress={() => this.onLongPressButtons('ss')}>
               {/* <Icon name="keyboard-arrow-down" size={28} /> */}
               <EscornabotIcon name="s" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
