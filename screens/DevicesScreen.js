@@ -43,7 +43,11 @@ class DevicesScreen extends Component {
 
   _renderItem = ({item}) => {
     const icon = item.connected ? <Icon name='done' size={20} color='#04d804' /> : <Icon name='keyboard-arrow-right' size={20} />;
-    return (item.name && <TouchableOpacity onPress={() => this.props.connectToDevice(item, 'devicesScreen')}>
+    const titleList = item.connected ? item.name + ' conectado' : item.name;
+    return (item.name && <TouchableOpacity onPress={() => this.props.connectToDevice(item, 'devicesScreen')}
+    accessible={true}
+    accessibilityLabel={`${titleList}`}
+    >
     <ListItem
       title={`${item.name}`}
       subtitle={`${item.id}`}

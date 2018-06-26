@@ -105,27 +105,47 @@ class PadScreen extends Component {
         {connectedDevice && 
         <View style={styles.container}>
           <View>
-            <TouchableOpacity style={[styles.buttons, styles.n]} onPress={() => this.onPressButtons('n')} onLongPress={() => this.onPressButtons('nn')}>
+            <TouchableOpacity style={[styles.buttons, styles.n]} onPress={() => this.onPressButtons('n')}
+            onLongPress={() => this.onPressButtons('nn')}
+            accessible={true}
+            accessibilityLabel={'Avanzar'}
+            >
               {/* <Icon name="keyboard-arrow-up" size={28} /> */}
               <EscornabotIcon name="n" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
           </View>
           <View style={styles.row}>
-            <TouchableOpacity style={[styles.buttons, styles.w]} onPress={() => this.onPressButtons('w')} onLongPress={() => this.onPressButtons('ww')}>
+            <TouchableOpacity style={[styles.buttons, styles.w]} onPress={() => this.onPressButtons('w')}
+            onLongPress={() => this.onPressButtons('ww')}
+            accessible={true}
+            accessibilityLabel={'Girar a la izquierda'}
+            >
               {/* <Icon name="keyboard-arrow-left" size={28} /> */}
               <EscornabotIcon name="w" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.buttons, styles.g]} onPress={() => this.onPressButtons('g')} onLongPress={() => this.onPressButtons('gg')}>
+            <TouchableOpacity style={[styles.buttons, styles.g]} onPress={() => this.onPressButtons('g')}
+            onLongPress={() => this.onPressButtons('gg')}
+            accessible={true}
+            accessibilityLabel={'Ejecutar'}
+            >
               {/* <Text style={{color:'#FFF', fontWeight: 'bold', fontSize: 24}}>GO</Text> */}
               <EscornabotIcon name="g" size={60} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.buttons, styles.e]} onPress={() => this.onPressButtons('e')} onLongPress={() => this.onPressButtons('ee')}>
+            <TouchableOpacity style={[styles.buttons, styles.e]} onPress={() => this.onPressButtons('e')}
+            onLongPress={() => this.onPressButtons('ee')}
+            accessible={true}
+            accessibilityLabel={'Girar a la derecha'}
+            >
               {/* <Icon name="keyboard-arrow-right" size={28} /> */}
               <EscornabotIcon name="e" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
           </View>
-          <View>
-            <TouchableOpacity style={[styles.buttons, styles.s]} onPress={() => this.onPressButtons('s')} onLongPress={() => this.onLongPressButtons('ss')}>
+          <View accessible={true}>
+            <TouchableOpacity style={[styles.buttons, styles.s]} onPress={() => this.onPressButtons('s')}
+            onLongPress={() => this.onLongPressButtons('ss')}
+            accessible={true}
+            accessibilityLabel={'Retroceder'}
+            >
               {/* <Icon name="keyboard-arrow-down" size={28} /> */}
               <EscornabotIcon name="s" size={60} style={styles.escornaboticon} />
             </TouchableOpacity>
@@ -133,7 +153,7 @@ class PadScreen extends Component {
         </View>
         }
         {(connectingLast && enabledBluetooth) &&
-        <View style={[styles.container]}>
+        <View style={[styles.container]} accessible={true}>
           <ActivityIndicator size="small" color="#333" />
           <Text style={{marginTop:10}}>Connecting last known peripheral...</Text>
         </View>

@@ -38,10 +38,12 @@ const TabIcon = ({ selected, title }) => {
     let icon = null;
     switch (title) {
       case 'Keypad':
-        icon = <Icon name="all-out" size={28} />;
+        icon = <Icon name="all-out" size={28}
+        accessibilityLabel={'Keypad'} />;
         break;
       case 'Devices':
-        icon = <Icon name="settings-bluetooth" size={28} />;
+        icon = <Icon name="settings-bluetooth" size={28}
+        accessibilityLabel={'Dispositivos'} />;
         break;
     }
     return (icon);
@@ -358,6 +360,7 @@ class AppRoot extends Component {
               showIcon={true}
               showLabel={false}
               lazy
+              accessible={true}
               >
               <Scene
                 key="pad"
