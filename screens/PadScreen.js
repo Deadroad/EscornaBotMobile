@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'blue',
   },
   s: {
-    backgroundColor: 'black',
+    backgroundColor: 'yellow',
   },
   w: {
     backgroundColor: 'red',
